@@ -4,8 +4,7 @@ from functools import reduce
 
 import ldap3
 import traitlets
-from jasmin_ldap import AuthenticationError, Connection, F, Query, ServerPool
-from jupyterhub.auth import Authenticator
+from jasmin_ldap import Connection, F, Query, ServerPool
 from ldap3.utils.conv import escape_filter_chars
 from oauthenticator.generic import GenericOAuthenticator
 
@@ -129,19 +128,22 @@ class JASMINAuthenticator(GenericOAuthenticator):
             password=bind_password if bind_dn else self.bind_password,
         )
 
-    def _user_in_group(self, conn, group_dn, user_dn, username):
+    @staticmethod
+    def _user_in_group(conn, group_dn, user_dn, username):
         return bool(
             Query(conn, group_dn, scope=Query.SCOPE_ENTITY)
             .filter(F(member=user_dn) | F(uniqueMember=user_dn) | F(memberUid=username))
             .one()
         )
 
-    async def authenticate(self, handler, data):
-        # First, do the OAuth login and get the username
-        user_data = await super().authenticate(handler, data)
-        username = user_data["name"]
-        self.log.debug("[%s] User authenticated via OAuth", username)
+    async def check_allowed(self, username, auth_model):
+        """Check the user meets some additional ldap criteria to be allowed to login."""
+        # If the user is in allowed_users or allowed_groups, allow.
+        if await super().check_allowed(username, auth_model):
+            self.log.debug("[%s] User allowed by allowed_users.", username)
+            return True
 
+        # Otherwise check if they meet the LDAP criteria.
         # Construct the user's LDAP DN
         user_dn = self.user_dn_template.format(username=escape_filter_chars(username))
         self.log.debug("[%s] Using LDAP DN '%s'", username, user_dn)
@@ -160,7 +162,7 @@ class JASMINAuthenticator(GenericOAuthenticator):
                     self.log.warning(
                         "[%s] User does not match required filters", username
                     )
-                    return None
+                    return False
 
             # Check that the user matches a group, if given
             if self.allowed_groups:
@@ -179,38 +181,13 @@ class JASMINAuthenticator(GenericOAuthenticator):
                     self.log.warning(
                         "[%s] User does not belong to any allowed groups", username
                     )
-                    return None
+                    return False
 
-        # If we get to this point, the user is authenticated
-        return username
-
-    def is_admin(self, handler, authentication):
-        # If the user is already an admin by the whitelist, there is nothing to do
-        if super().is_admin(handler, authentication):
-            return True
-
-        # If there are no admin groups, we are done
-        if not self.admin_groups:
-            self.log.info("No admin groups defined")
-            return False
-
-        # Form the user's DN from the username
-        username = authentication["name"]
-        user_dn = self.user_dn_template.format(username=escape_filter_chars(username))
-        # Check if the user is in any admin groups
-        with self._connect() as conn:
-            self.log.debug("[%s] Checking if user is in an admin group", username)
-            for group_dn in self.admin_groups:
-                self.log.debug(
-                    "[%s] Checking if user is in group %s", username, group_dn
-                )
-                if self._user_in_group(conn, group_dn, user_dn, username):
-                    self.log.debug("[%s] User is in group %s", username, group_dn)
-                    return True
-        self.log.info("[%s] User does not belong to any admin groups", username)
-        return False
+        # If the user made it to here, they are allowed to authenticate.
+        return True
 
     def pre_spawn_start(self, user, spawner):
+        """Add user information from LDAP to the user's notebook server."""
         # Form the user's DN from the username
         username = user.name
         user_dn = self.user_dn_template.format(username=escape_filter_chars(username))

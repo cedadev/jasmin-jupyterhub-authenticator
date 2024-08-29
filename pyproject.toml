@@ -10,10 +10,10 @@ packages = [{include = "jasmin_authenticator"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-jupyterhub = ">=3.1.1"
-oauthenticator = "^15.1.0"
+oauthenticator = "^16.2"
 jasmin-ldap = {git = "https://github.com/cedadev/jasmin-ldap.git", rev = "25550e8c71abba9be2028e5df86015ac11455671"}
 traitlets = "^5.9.0"
+ldap3 = ">=2.9.1"
 
 
 [build-system]
