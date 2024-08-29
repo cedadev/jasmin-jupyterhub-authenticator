@@ -4,8 +4,7 @@ from functools import reduce
 
 import ldap3
 import traitlets
-from jasmin_ldap import AuthenticationError, Connection, F, Query, ServerPool
-from jupyterhub.auth import Authenticator
+from jasmin_ldap import Connection, F, Query, ServerPool
 from ldap3.utils.conv import escape_filter_chars
 from oauthenticator.generic import GenericOAuthenticator
 
