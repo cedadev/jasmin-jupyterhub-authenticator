@@ -6,6 +6,7 @@ authors = ["STFC JASMIN Developers <support@jasmin.ac.uk>"]
 maintainers = ["Alexander Manning <alexander.manning@stfc.ac.uk>"]
 license = "BSD-3-Clause"
 readme = "README.md"
+packages = [{include = "jasmin_authenticator"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
