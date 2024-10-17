@@ -1,5 +1,6 @@
 """JupyterHub authenticator implementation for the JASMIN notebook service."""
 
+import ssl
 from functools import reduce
 
 import ldap3
@@ -119,6 +120,18 @@ class JASMINAuthenticator(GenericOAuthenticator):
 
         The DN and password for bind can be overridden by the given arguments.
         """
+
+        servers = []
+        for server in self.servers:
+            servers.append(
+                ldap3.Server(
+                    host=server["host"],
+                    use_ssl=True,
+                    port=636,
+                    tls=ldap3.Tls(validate=ssl.CERT_REQUIRED),
+                )
+            )
+
         return Connection.create(
             # We only need a read-only connection, so create a pool with replicas only
             ServerPool(replicas=self.servers),
