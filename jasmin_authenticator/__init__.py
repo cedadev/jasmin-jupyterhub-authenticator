@@ -19,11 +19,11 @@ class JASMINAuthenticator(GenericOAuthenticator):
     Accounts Portal before reading POSIX information for the user from LDAP.
     """
 
-    addresses = traitlets.List(
-        traitlets.Unicode(),
+    servers = traitlets.List(
+        ldap3.Server,
         config=True,
         minlen=1,
-        help="List of LDAP server addresses.",
+        help="List of LDAP3 server objects.",
     )
 
     bind_dn = traitlets.Unicode(
@@ -120,10 +120,9 @@ class JASMINAuthenticator(GenericOAuthenticator):
 
         The DN and password for bind can be overridden by the given arguments.
         """
-        addresses = [ldap3.Server(host=x) for x in self.addresses]
         return Connection.create(
             # We only need a read-only connection, so create a pool with replicas only
-            ServerPool(replicas=addresses),
+            ServerPool(replicas=self.servers),
             user=bind_dn or self.bind_dn,
             password=bind_password if bind_dn else self.bind_password,
         )
