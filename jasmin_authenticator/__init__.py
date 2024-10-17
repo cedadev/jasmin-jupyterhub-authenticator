@@ -20,7 +20,6 @@ class JASMINAuthenticator(GenericOAuthenticator):
     """
 
     servers = traitlets.List(
-        ldap3.Server,
         config=True,
         minlen=1,
         help="List of LDAP3 server objects.",
